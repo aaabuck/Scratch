@@ -1,0 +1,49 @@
+services:
+  ts-ollamawebui:
+    image: tailscale/tailscale:latest
+    container_name: ts-ollamawebui
+    hostname: ollmalocal
+    environment:
+      - TS_AUTHKEY=tskey-auth-kUAaDddVDT11CNTRL-JPHF3kS5uLiBiQhaF8xHMieXEhCPLCqb
+      - TS_STATE_DIR=/var/lib/tailscale
+      - TS_SERVE_CONFIG=/config/openwebui.json
+      - TS_USERSPACE=false
+
+    volumes:
+      - tailscale-data:/var/lib/tailscale
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    restart: unless-stopped
+    networks:
+      - openwebui_net
+
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:ollama
+    container_name: open-webui
+    depends_on:
+      - ts-ollamawebui
+    ports:
+      - "3000:8080"
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=ALL
+    
+
+    volumes:
+      - ollama-data:/root/.ollama
+      - open-webui-data:/app/backend/data
+    restart: always
+    networks:
+      - openwebui_net
+
+networks:
+  openwebui_net:
+    driver: bridge
+
+volumes:
+  ollama-data:
+  open-webui-data:
+  tailscale-data:
