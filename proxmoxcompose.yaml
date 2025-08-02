@@ -1,0 +1,50 @@
+services:
+  ts-proxmox:
+    image: tailscale/tailscale:latest
+    container_name: ts-proxmox
+    hostname: GreasedLightning
+    environment:
+      - TS_AUTHKEY=tskey-auth-kUAaDddVDT11CNTRL-JPHF3kS5uLiBiQhaF8xHMieXEhCPLCqb
+      - TS_STATE_DIR=/var/lib/tailscale
+      - TS_USERSPACE=false
+      - TS_SERVE_CONFIG=/config/proxmox.json
+    volumes:
+      - ${PWD}/ts-proxmox/state:/var/lib/tailscale
+      - ${PWD}/config:/config
+      - ${PWD}/logs:/logs
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+    restart: unless-stopped
+
+  proxmoxve:
+    image: rtedpro/proxmox:8.4.x
+    depends_on:
+      - ts-proxmox
+    network_mode: service:ts-proxmox
+    privileged: true
+    stdin_open: true
+    tty: true
+    restart: unless-stopped
+    volumes:
+      - ${PWD}/proxmox-data:/app/data
+
+networks:
+  proxmox_net:
+    driver: ipvlan
+    driver_opts:
+      ipvlan_mode: l2
+      parent: eth0
+    ipam:
+      config:
+        - subnet: 192.168.1.0/24
+          gateway: 192.168.1.1
+
+
+volumes:
+    ts-proxmox:
+        driver: local
+    proxmox-data:
+        driver: local
