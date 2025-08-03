@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
-set -euo pipefail
+# -E: inherit ERR trap in functions
+# -u: treat unset variables as errors
+# -o pipefail: propagate errors in pipelines
+set -Euo pipefail
 
 ### ─── HARD-CODED PCI ADDRESSES ───────────────────────────────────────────────
 PCI_VGA="0000:01:00.0"
@@ -23,21 +26,37 @@ log() { echo "[$(date +'%T')] $*"; }
 
 ### Argument Checking
 
-function usage () {
-if [[ $# -e 1 ]]; then
+usage() {
+  {
+    log "Usage: $0 {unload|load}"
+    log "  -h, --help   Show this help message and exit"
+  } >&2
+  exit "${1:-1}"
+}
+
 if [[ $# -ne 1 ]]; then
-  echo "Usage: $0 {unload|load}"
-  log "Usage: $0 {unload|load}" >&2
-  exit 1
+  usage 1
+fi
+
+if [[ $1 == "-h" || $1 == "--help" ]]; then
+  usage 0
 fi
 
 if [[ $EUID -ne 0 ]]; then
-  log "ERROR:This script must be run as root or via sudo." >&2
+  log "ERROR: This script must be run as root or via sudo." >&2
   exit 1
 fi
 
-
+### ─── ERROR HANDLING ─────────────────────────────────────────────────────────
+# Log errors but continue execution so that non-fatal failures don't trigger the
+# cleanup routine prematurely and restart the display manager.
+handle_error() {
+  local exit_code=$?
+  local line_no=${BASH_LINENO[0]}
+  log "WARNING: command '${BASH_COMMAND}' exited with code ${exit_code} at line ${line_no}" >&2
 }
+
+trap handle_error ERR
 
 ### presetup functions
 function stop_dm (){
@@ -225,10 +244,7 @@ case "$1" in
     ;;
 
   *)
-    
-    cat <<EOF
-
-    exit 1
+    usage 1
     ;;
 esac
 
