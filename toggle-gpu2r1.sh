@@ -21,8 +21,13 @@ readonly AUDIO_DRIVER="snd_hda_intel"
 ### ─── LOGGING FUNCTION ─────────────────────────────────────────────────────
 log() { echo "[$(date +'%T')] $*"; }
 
+### Argument Checking
+
+function usage () {
+if [[ $# -e 1 ]]; then
 if [[ $# -ne 1 ]]; then
-  echo "Usage: $0 {unload|load}" >&2
+  echo "Usage: $0 {unload|load}"
+  log "Usage: $0 {unload|load}" >&2
   exit 1
 fi
 
@@ -31,7 +36,11 @@ if [[ $EUID -ne 0 ]]; then
   exit 1
 fi
 
-function stop_dm {
+
+}
+
+### presetup functions
+function stop_dm (){
     ## Get display manager on systemd based distros ##
     if [[ -x /run/systemd/system ]] && log "Distro is using Systemd"; then
         DISPMGR="$(grep 'ExecStart=' /etc/systemd/system/display-manager.service | awk -F'/' '{print $(NF-0)}')"
@@ -54,7 +63,7 @@ function stop_dm {
 
 }
 
-function kde-clause {
+function kde-clause (){
 
     log "INFO:$DISPMGR = display-manager"
 
@@ -141,7 +150,7 @@ while read -r DISPMGR; do
   if command -v systemctl; then
 
     ## Make sure the variable got collected ##
-    echo "$DATE Var has been collected from file: $DISPMGR"
+    log "Var has been collected from file: $DISPMGR"
 
     systemctl start "$DISPMGR.service"
 
@@ -161,7 +170,7 @@ while read -r consoleNumber; do
   if test -x /sys/class/vtconsole/vtcon"${consoleNumber}"; then
       if [ "$(grep -c "frame buffer" "/sys/class/vtconsole/vtcon${consoleNumber}/name")" \
            = 1 ]; then
-    echo "$DATE Rebinding console ${consoleNumber}"
+    log "Rebinding console ${consoleNumber}"
           echo 1 > /sys/class/vtconsole/vtcon"${consoleNumber}"/bind
       fi
   fi
@@ -216,12 +225,9 @@ case "$1" in
     ;;
 
   *)
+    
     cat <<EOF
-Usage: $0 {unload|load}
 
-  unload   → unload NVIDIA, bind GPU to vfio-pci (for VM passthrough)
-  load     → unload vfio-pci, load NVIDIA modules (for host/containers)
-EOF
     exit 1
     ;;
 esac
