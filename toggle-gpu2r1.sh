@@ -161,7 +161,6 @@ case "$1" in
   load)
     log "► Reverting VFIO → NVIDIA (for host/container use)"
     # 1) Unbind from VFIO
-    for m in "${VFIO_DRIVERS_UNLOAD[@]}"; do
     unbind_device "$PCI_VGA"   vfio-pci
     unbind_device "$PCI_AUDIO" vfio-pci
 
@@ -181,7 +180,14 @@ case "$1" in
     ;;
 
   *)
+    cat <<EOF
+Usage: $0 {unload|load}
 
+  unload   → unload NVIDIA, bind GPU to vfio-pci (for VM passthrough)
+  load     → unload vfio-pci, load NVIDIA modules (for host/containers)
+EOF
+    exit 1
+    ;;
 esac
 
 cleanup() {
@@ -217,14 +223,4 @@ while read -r consoleNumber; do
   fi
 done < "$input"
 }
-
-log "End of Teardown!"
-    cat <<EOF
-Usage: $0 {unload|load}
-
-  unload   → unload NVIDIA, bind GPU to vfio-pci (for VM passthrough)
-  load     → unload vfio-pci, load NVIDIA modules (for host/containers)
-EOF
-    exit 1
-    ;;
 
