@@ -134,6 +134,42 @@ bind_device() {
   fi
 }
 
+cleanup() {
+## Restart Display Manager ##
+input="/tmp/toggle-gpu.dm"
+while read -r DISPMGR; do
+  if command -v systemctl; then
+
+    ## Make sure the variable got collected ##
+    echo "$DATE Var has been collected from file: $DISPMGR"
+
+    systemctl start "$DISPMGR.service"
+
+  else
+    if command -v sv; then
+      sv start "$DISPMGR"
+    fi
+  fi
+done < "$input"
+
+############################################################################################################
+## Rebind VT consoles (adapted and modernised from https://www.kernel.org/doc/Documentation/fb/fbcon.txt) ##
+############################################################################################################
+
+input="/tmp/vfio-bound-consoles"
+while read -r consoleNumber; do
+  if test -x /sys/class/vtconsole/vtcon"${consoleNumber}"; then
+      if [ "$(grep -c "frame buffer" "/sys/class/vtconsole/vtcon${consoleNumber}/name")" \
+           = 1 ]; then
+    echo "$DATE Rebinding console ${consoleNumber}"
+          echo 1 > /sys/class/vtconsole/vtcon"${consoleNumber}"/bind
+      fi
+  fi
+done < "$input"
+}
+
+trap cleanup EXIT SIGINT SIGTERM
+
 ### ─── MAIN TOGGLE LOGIC ─────────────────────────────────────────────────────
 case "$1" in
   unload)
@@ -189,38 +225,4 @@ EOF
     exit 1
     ;;
 esac
-
-cleanup() {
-## Restart Display Manager ##
-input="/tmp/toggle-gpu.dm"
-while read -r DISPMGR; do
-  if command -v systemctl; then
-
-    ## Make sure the variable got collected ##
-    echo "$DATE Var has been collected from file: $DISPMGR"
-
-    systemctl start "$DISPMGR.service"
-
-  else
-    if command -v sv; then
-      sv start "$DISPMGR"
-    fi
-  fi
-done < "$input"
-
-############################################################################################################
-## Rebind VT consoles (adapted and modernised from https://www.kernel.org/doc/Documentation/fb/fbcon.txt) ##
-############################################################################################################
-
-input="/tmp/vfio-bound-consoles"
-while read -r consoleNumber; do
-  if test -x /sys/class/vtconsole/vtcon"${consoleNumber}"; then
-      if [ "$(grep -c "frame buffer" "/sys/class/vtconsole/vtcon${consoleNumber}/name")" \
-           = 1 ]; then
-    echo "$DATE Rebinding console ${consoleNumber}"
-	  echo 1 > /sys/class/vtconsole/vtcon"${consoleNumber}"/bind
-      fi
-  fi
-done < "$input"
-}
 
